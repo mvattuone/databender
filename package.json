@@ -2,9 +2,10 @@
   "name": "databender",
   "version": "1.0.0",
   "description": "Create interesting visuals by misusing the Web Audio API",
-  "main": "index.js",
+  "main": "dist/databender.js",
   "scripts": {
     "build": "rollup -c",
+    "prepublish": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -25,4 +26,5 @@
     "rollup-plugin-json": "^2.3.0",
     "rollup-plugin-node-resolve": "^3.3.0"
   }
+ ]
 }
