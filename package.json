@@ -1,0 +1,28 @@
+{
+  "name": "databender",
+  "version": "1.0.0",
+  "description": "Create interesting visuals by misusing the Web Audio API",
+  "main": "index.js",
+  "scripts": {
+    "build": "rollup -c",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "glitch",
+    "art",
+    "databend",
+    "web",
+    "audio"
+  ],
+  "author": "Mike Vattuone",
+  "license": "MIT",
+  "dependencies": {
+    "tunajs": "^1.0.1"
+  },
+  "devDependencies": {
+    "rollup": "^0.58.2",
+    "rollup-plugin-commonjs": "^9.1.0",
+    "rollup-plugin-json": "^2.3.0",
+    "rollup-plugin-node-resolve": "^3.3.0"
+  }
+}
