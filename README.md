@@ -59,7 +59,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Examples
 
-[Drawdio](https://mvattuone.github.io/webaudio-databend)
-[Jonathan Taylor Tuner](https://mvattuone.github.io/jtt/)
-A [Granular Synth](https://mvattuone.github.io/triticale/)
-[Conway's Game of Databending](https://mvattuone.github.io/vattuonet-v2/)
+[Drawdio](https://mvattuone.github.io/webaudio-databend)  
+[Jonathan Taylor Tuner](https://mvattuone.github.io/jtt/)  
+[Granular Synth](https://mvattuone.github.io/triticale/)  
+[Conway's Game of Databending](https://mvattuone.github.io/vattuonet-v2/)  
