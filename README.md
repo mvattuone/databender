@@ -1,5 +1,7 @@
 # Databender
 
+**NOTE: This API may change wildly in v2... use at your own peril!**
+
 This module allows for generation interesting visuals by misusing the Web Audio API. 
 Inspired by [David Byrne](https://www.youtube.com/watch?v=Gea9SYUdJeY) and [AudioShop](https://github.com/robertfoss/audio_shop/)
 
@@ -40,6 +42,9 @@ You might also prefer using this in a CommonJS manner:
 ```js
 const Databender = require('databender');
 ```
+
+Since I am lazy, you'll need to deduce what config you want for each effect that is included by looking in the `effects` directory. At some point, this may be removed from the app, and it will be up to you to include whatever effects and dependencies you would like to use with your bent data.
+
 ### Prerequisites
 
 Google Chrome (ideally) and an open mind!
