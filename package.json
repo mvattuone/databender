@@ -8,7 +8,13 @@
     "prepublish": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["glitch", "art", "databend", "web", "audio"],
+  "keywords": [
+    "glitch",
+    "art",
+    "databend",
+    "web",
+    "audio"
+  ],
   "author": "Mike Vattuone",
   "license": "MIT",
   "dependencies": {
