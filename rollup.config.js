@@ -11,7 +11,7 @@ export default {
     format: 'iife'
   },
   plugins: [
-    commonjs(),
+    commonjs({ ignore: ['conditional-runtime-dependency']}),
     resolve(),
     json({
       exclude: 'node_modules/**',
