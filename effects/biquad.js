@@ -1,8 +1,10 @@
+const random = require('../random');
+
 module.exports  = (config, offlineAudioCtx, bufferSource) => {
   if (config.biquad.randomize) {
     var waveArray = new Float32Array(config.biquad.randomValues);
     for (let i=0;i<config.biquad.randomValues;i++) {
-      waveArray[i] = window.random.real(0.0001, config.biquad.biquadFrequency); 
+      waveArray[i] = random(0.0001, config.biquad.biquadFrequency); 
     }
   }
   var biquadFilter = offlineAudioCtx.createBiquadFilter();

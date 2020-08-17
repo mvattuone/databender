@@ -1,10 +1,12 @@
 'use strict';
 
+const random = require('../random');
+
 module.exports = (config, tuna, bufferSource) => {
   if (config.detune.randomize) {
     var waveArray = new Float32Array(config.detune.randomValues);
     for (i=0;i<config.detune.randomValues;i++) {
-      waveArray[i] = window.random.real(0.0001, 400); 
+      waveArray[i] = random(0.0001, 400); 
     }
   }
   if (config.detune.randomize) {
