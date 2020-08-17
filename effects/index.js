@@ -9,6 +9,5 @@ exports.gain = require('./gain');
 exports.phaser = require('./phaser');
 exports.pingPong = require('./pingPong');
 exports.playbackRate = require('./playbackRate');
-exports.wahwah = require('./wahwah');
 
 
