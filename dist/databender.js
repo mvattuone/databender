@@ -88,7 +88,7 @@ var Databender = (function () {
   var detune = (config, tuna, bufferSource) => {
     if (config.detune.randomize) {
       var waveArray = new Float32Array(config.detune.randomValues);
-      for (i=0;i<config.detune.randomValues;i++) {
+      for (let i=0;i<config.detune.randomValues;i++) {
         waveArray[i] = random$2(0.0001, 400); 
       }
     }
