@@ -1,6 +1,6 @@
-const random = require('../random');
+import random from '../random.js';
 
-module.exports  = (config, offlineAudioCtx, bufferSource) => {
+export default (config, offlineAudioCtx, bufferSource) => {
   if (config.biquad.randomize) {
     var waveArray = new Float32Array(config.biquad.randomValues);
     for (let i=0;i<config.biquad.randomValues;i++) {

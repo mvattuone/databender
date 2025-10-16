@@ -1,4 +1,4 @@
-module.exports = (config, tuna) => {
+export default (config, tuna) => {
   return new tuna.Bitcrusher({
     bits: config.bitcrusher.bits,
     normfreq: config.bitcrusher.normfreq,

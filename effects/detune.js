@@ -1,8 +1,8 @@
 'use strict';
 
-const random = require('../random');
+import random from '../random.js';
 
-module.exports = (config, tuna, bufferSource) => {
+export default (config, tuna, bufferSource) => {
   if (config.detune.randomize) {
     var waveArray = new Float32Array(config.detune.randomValues);
     for (let i=0;i<config.detune.randomValues;i++) {

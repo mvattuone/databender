@@ -1,4 +1,4 @@
-module.exports = (config, tuna, bufferSource) => {
+export default (config, tuna, bufferSource) => {
   if (config.playbackRate.randomize) {
     var waveArray = new Float32Array(config.playbackRate.randomValues);
     for (i=0;i<config.playbackRate.randomValues;i++) {
