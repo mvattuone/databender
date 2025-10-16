@@ -11,7 +11,7 @@ Full API documentation and such is _coming soon_.
 
 The quickest way to get _something_ on the page:
 
-- Run `npm i` in your project and make sure you have an image to point to somewhere.
+- Run `npm i databender` in your project and make sure you have an image to point to somewhere.
 - Paste the following snippet into `index.html` and point the image to the location of the image you'd like to bend.
 
 ```html
@@ -64,11 +64,15 @@ The quickest way to get _something_ on the page:
 - Start up a server (e.g. `python -m SimpleHTTPServer`)
 - Behold!
 
-You might also prefer using this in a CommonJS manner:
+Using an ES module aware bundler? You can import straight from npm:
 
 ```js
-const Databender = require("databender");
+import Databender from "databender";
+
+const databender = new Databender(config);
 ```
+
+Need to stick with a classic `<script>` tag that isn't module friendly? `npm run build` will drop an IIFE bundle into `dist/databender.js` that exposes `window.Databender` just like before. Drop that bundle on the page and the snippet above will still work.
 
 Since I am lazy, you'll need to deduce what config you want for each effect that is included by looking in the `effects` directory. At some point, this may be removed from the app, and it will be up to you to include whatever effects and dependencies you would like to use with your bent data.
 
