@@ -81,7 +81,7 @@ export default class Databender {
                 bufferSource.connect(offlineAudioCtx.destination);
             } else {
                 var nodes = activeEffectsIndex.map((effect) => {
-                    const context = effect === 'biquad' ? offlineAudioCtx : tuna;
+                    const context = (effect === 'biquad' || effect === 'gain') ? offlineAudioCtx : tuna;
                     return effects[effect](this.config, context, bufferSource);
                 }).filter(Boolean);
 
