@@ -74,7 +74,7 @@ Need to stick with a classic `<script>` tag that isn't module friendly? `npm run
 
 ### Custom effect chains
 
-You can inject any Web Audio nodes (Tone.js, Pizzicato, TunaJS, etc.) and they'll be chained in theorder you provide. 
+You can inject any Web Audio nodes (Tone.js, Pizzicato, TunaJS, etc.) and they'll be chained in the order you provide. 
 
 ```js
 import Databender from 'databender';
@@ -97,6 +97,8 @@ databender.bend(img, context);
 ```
 
 You can also supply a `createEffectsChain` function if you need to build different chains per render. When using libraries like Tone.js or Pizzicato, return either the relevant `AudioNode` or an object shaped like `{ input: node.input, output: node.output }` so Databender knows how to wire things up.
+
+Effect factories can return plain nodes or promises that resolve to nodes. Databender waits on any promises before it starts rendering, which makes it possible to do async setup on the `OfflineAudioContext` (for example, loading an `AudioWorklet` module for each render).
 
 #### Example: Pizzicato effects
 
@@ -130,6 +132,26 @@ databender.bend(img, context);
 ```
 
 (Note: `swapPizzicatoContext` is a tiny helper that swaps Pizzicato's internal context to the offline one Databender uses during rendering, then returns the effect's input/output nodes so Databender can connect it in sequence.)
+
+#### Example: AudioWorklet
+
+```js
+import Databender from 'databender';
+
+const useBitcrusher = async ({ context }) => {
+  await context.audioWorklet.addModule('/path/to/effects/bitcrusher.js');
+  return new AudioWorkletNode(context, 'bitcrusher');
+};
+
+const databender = new Databender({
+  config,
+  effectsChain: [useBitcrusher]
+});
+
+databender.bend(img, context);
+```
+
+Because Databender spins up a brand new `OfflineAudioContext` for every render, the worklet module has to be registered on that context before the node is created. Returning a promise from your effect factory ensures the render waits for the module to load.
 
 ### Prerequisites
 

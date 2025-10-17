@@ -3,6 +3,8 @@ const isFunction = (candidate) => typeof candidate === 'function';
 
 const isConnectable = (candidate) => candidate && typeof candidate.connect === 'function';
 
+const isPromise = (candidate) => candidate && typeof candidate.then === 'function';
+
 const normalizeEffectNode = (candidate) => {
     if (!candidate) {
         return null;
@@ -97,7 +99,7 @@ export default class Databender {
             this.config[effect][param] = value;
         };
 
-        this.render = function(buffer, bypass = false) {
+        this.render = async function(buffer, bypass = false) {
 
             // Create offlineAudioCtx that will house our rendered buffer
             var offlineAudioCtx = new OfflineAudioContext(this.channels, buffer.length * this.channels, this.audioCtx.sampleRate);
@@ -108,7 +110,7 @@ export default class Databender {
             // Set buffer to audio buffer containing image data
             bufferSource.buffer = buffer;
 
-            var resolveEffectsChain = function() {
+            var resolveEffectsChain = async function() {
                 if (bypass) {
                     return [];
                 }
@@ -119,20 +121,39 @@ export default class Databender {
                     chainDefinition = this.createEffectsChain({ context: offlineAudioCtx, source: bufferSource, config: this.config });
                 } else if (this.effectsChain) {
                     chainDefinition = this.effectsChain;
-                } 
+                }
 
-                return asArray(chainDefinition).reduce((accumulator, nodeCandidate) => {
+                if (isPromise(chainDefinition)) {
+                    chainDefinition = await chainDefinition;
+                }
+
+                var candidates = asArray(chainDefinition);
+                var resolvedNodes = [];
+
+                for (var i = 0; i < candidates.length; i++) {
+                    var nodeCandidate = candidates[i];
                     var resolvedNode = nodeCandidate;
 
                     if (isFunction(resolvedNode)) {
                         resolvedNode = resolvedNode({ context: offlineAudioCtx, source: bufferSource, config: this.config });
                     }
 
-                    return accumulator.concat(asArray(resolvedNode));
-                }, []);
+                    if (isPromise(resolvedNode)) {
+                        resolvedNode = await resolvedNode;
+                    }
+
+                    var normalizedNodes = asArray(resolvedNode);
+
+                    for (var j = 0; j < normalizedNodes.length; j++) {
+                        var node = normalizedNodes[j];
+                        resolvedNodes.push(isPromise(node) ? await node : node);
+                    }
+                }
+
+                return resolvedNodes;
             }.bind(this);
 
-            var effectNodes = resolveEffectsChain().map(normalizeEffectNode).filter(Boolean);
+            var effectNodes = (await resolveEffectsChain()).map(normalizeEffectNode).filter(Boolean);
 
             if (!effectNodes.length) {
                 bufferSource.connect(offlineAudioCtx.destination);
