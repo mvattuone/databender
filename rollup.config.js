@@ -1,21 +1,25 @@
 // rollup.config.js
-import commonjs from 'rollup-plugin-commonjs';
-import resolve from 'rollup-plugin-node-resolve';
-import json from 'rollup-plugin-json';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
 
 export default {
   input: 'index.js',
   output: {
     file: 'dist/databender.js',
     name: 'Databender',
-    format: 'iife'
+    format: 'iife',
+    sourcemap: true
   },
   plugins: [
-    commonjs({ ignore: ['conditional-runtime-dependency']}),
-    resolve(),
-    json({
-      exclude: 'node_modules/**',
-      preferConst: true
-    })
+    resolve({
+      browser: true,       
+      preferBuiltins: false, 
+    }),
+    commonjs({
+      requireReturnsDefault: 'auto', 
+    }),
+    json({ preferConst: true })
   ]
 };
+
