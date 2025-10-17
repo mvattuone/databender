@@ -1,7 +1,5 @@
 # Databender
 
-**NOTE: This API may change wildly in v2... use at your own peril!**
-
 This module allows for generation interesting visuals by misusing the Web Audio API.
 Inspired by [David Byrne](https://www.youtube.com/watch?v=Gea9SYUdJeY) and [AudioShop](https://github.com/robertfoss/audio_shop/)
 
@@ -74,16 +72,68 @@ const databender = new Databender(config);
 
 Need to stick with a classic `<script>` tag that isn't module friendly? `npm run build` will drop an IIFE bundle into `dist/databender.js` that exposes `window.Databender` just like before. Drop that bundle on the page and the snippet above will still work.
 
-Since I am lazy, you'll need to deduce what config you want for each effect that is included by looking in the `effects` directory. At some point, this may be removed from the app, and it will be up to you to include whatever effects and dependencies you would like to use with your bent data.
+### Custom effect chains
+
+You can inject any Web Audio nodes (Tone.js, Pizzicato, TunaJS, etc.) and they'll be chained in theorder you provide. 
+
+```js
+import Databender from 'databender';
+
+const databender = new Databender([
+  ({ context }) => {
+    const filter = context.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 400;
+    return filter;
+  },
+  ({ context }) => {
+    const gain = context.createGain();
+    gain.gain.value = 0.8;
+    return gain;
+  }
+]);
+
+databender.bend(img, context);
+```
+
+You can also supply a `createEffectsChain` function if you need to build different chains per render. When using libraries like Tone.js or Pizzicato, return either the relevant `AudioNode` or an object shaped like `{ input: node.input, output: node.output }` so Databender knows how to wire things up.
+
+#### Example: Pizzicato effects
+
+```js
+import Databender from 'databender';
+import Pizzicato from 'pizzicato';
+
+const swapPizzicatoContext = (EffectCtor, options) => ({ context }) => {
+  // swap pizzicato internal context=
+  const previous = Pizzicato.context;
+  Pizzicato.context = context;
+  const effect = new EffectCtor(options);
+  Pizzicato.context = previous;
+  return { input: effect.inputNode, output: effect.outputNode };
+};
+
+const databender = new Databender([
+  swapPizzicatoContext(Pizzicato.Effects.Delay, {
+    feedback: 0.6,
+    time: 0.4,
+    mix: 0.5
+  }),
+  swapPizzicatoContext(Pizzicato.Effects.LowPassFilter, {
+    frequency: 1200,
+    peak: 10,
+    mix: 0.4
+  })
+]);
+
+databender.bend(img, context);
+```
+
+(Note: `swapPizzicatoContext` is a tiny helper that swaps Pizzicato's internal context to the offline one Databender uses during rendering, then returns the effect's input/output nodes so Databender can connect it in sequence.)
 
 ### Prerequisites
 
 Google Chrome (ideally) and an open mind!
-
-## Built With
-
-- [TunaJS](https://github.com/Theodeus/tuna) - A splendid audio effects library.
-- [Rollup](https://github.com/rollup/rollup) - Module bundling
 
 ## Contributing
 

@@ -17,9 +17,6 @@
   ],
   "author": "Mike Vattuone",
   "license": "MIT",
-  "dependencies": {
-    "tunajs": "1.0.11"
-  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "28.0.8",
     "@rollup/plugin-json": "6.1.0",

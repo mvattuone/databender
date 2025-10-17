@@ -1,14 +1,59 @@
-import Tuna from 'tunajs';
-import * as effects from './effects/index.js';
 
-// Create a Databender instance
+const isFunction = (candidate) => typeof candidate === 'function';
+
+const isConnectable = (candidate) => candidate && typeof candidate.connect === 'function';
+
+const normalizeEffectNode = (candidate) => {
+    if (!candidate) {
+        return null;
+    }
+
+    const input = isConnectable(candidate.input) ? candidate.input : candidate;
+    const output = isConnectable(candidate.output) ? candidate.output : input;
+
+    if (!isConnectable(input) || !isConnectable(output)) {
+        return null;
+    }
+
+    return { input, output };
+};
+
+const asArray = (value) => {
+    if (!value) {
+        return [];
+    }
+
+    return Array.isArray(value) ? value : [value];
+};
+
+const normalizeConstructorInput = (configOrOptions) => {
+    if (Array.isArray(configOrOptions)) {
+        return { effectsChain: configOrOptions, config: null };
+    }
+
+    if (configOrOptions && typeof configOrOptions === 'object' && (configOrOptions.effectsChain || configOrOptions.createEffectsChain || configOrOptions.config)) {
+        return {
+            config: configOrOptions.config || null,
+            effectsChain: configOrOptions.effectsChain || null,
+            createEffectsChain: configOrOptions.createEffectsChain || null
+        };
+    }
+
+    return { config: configOrOptions || null };
+};
+
 export default class Databender {
-    constructor(config, audioCtx) {
+    constructor(configOrOptions, audioCtx) {
+        const options = normalizeConstructorInput(configOrOptions);
         this.audioCtx = audioCtx ? audioCtx : new AudioContext();
         this.channels = 1;
-        this.config = config;
+        this.config = options.config || {};
         this.configKeys = Object.keys(this.config);
         this.previousConfig = this.config;
+        this.effectsChain = options.effectsChain ? asArray(options.effectsChain) : null;
+        this.createEffectsChain = options.createEffectsChain && isFunction(options.createEffectsChain)
+            ? options.createEffectsChain
+            : null;
 
         this.convert = function(image) {
             if (image instanceof Image || image instanceof HTMLVideoElement) {
@@ -39,10 +84,16 @@ export default class Databender {
         };
 
         this.configHasChanged = function() {
+            if (!this.configKeys.length) {
+                return false;
+            }
             return JSON.stringify(this.previousConfig) !== JSON.stringify(this.config);
         };
 
         this.updateConfig = function(effect, param, value) {
+            if (!this.configKeys.length || !this.config[effect]) {
+                return;
+            }
             this.config[effect][param] = value;
         };
 
@@ -51,45 +102,50 @@ export default class Databender {
             // Create offlineAudioCtx that will house our rendered buffer
             var offlineAudioCtx = new OfflineAudioContext(this.channels, buffer.length * this.channels, this.audioCtx.sampleRate);
 
-            var tuna = new Tuna(offlineAudioCtx);
-
             // Create an AudioBufferSourceNode, which represents an audio source consisting of in-memory audio data
             var bufferSource = offlineAudioCtx.createBufferSource();
 
             // Set buffer to audio buffer containing image data
             bufferSource.buffer = buffer;
 
-            var activeEffects = this.configKeys.reduce((acc, cur) => {
-                this.config[cur].active ? acc[cur] = effects[cur] : false;
-                return acc;
-            }, {});
+            var resolveEffectsChain = function() {
+                if (bypass) {
+                    return [];
+                }
 
-            var activeEffectsIndex = Object.keys(activeEffects);
+                var chainDefinition = null;
 
-            bufferSource.start();
+                if (this.createEffectsChain) {
+                    chainDefinition = this.createEffectsChain({ context: offlineAudioCtx, source: bufferSource, config: this.config });
+                } else if (this.effectsChain) {
+                    chainDefinition = this.effectsChain;
+                } 
 
-            if (activeEffectsIndex && activeEffectsIndex.length) {
-                activeEffectsIndex.forEach((effect) => {
-                    if (effect === 'detune' || effect === 'playbackRate') {
-                        effects[effect](this.config, tuna, bufferSource);
-                        activeEffectsIndex.pop();
+                return asArray(chainDefinition).reduce((accumulator, nodeCandidate) => {
+                    var resolvedNode = nodeCandidate;
+
+                    if (isFunction(resolvedNode)) {
+                        resolvedNode = resolvedNode({ context: offlineAudioCtx, source: bufferSource, config: this.config });
                     }
-                });
-            }
 
-            if (!activeEffectsIndex.length) {
+                    return accumulator.concat(asArray(resolvedNode));
+                }, []);
+            }.bind(this);
+
+            var effectNodes = resolveEffectsChain().map(normalizeEffectNode).filter(Boolean);
+
+            if (!effectNodes.length) {
                 bufferSource.connect(offlineAudioCtx.destination);
             } else {
-                var nodes = activeEffectsIndex.map((effect) => {
-                    const context = (effect === 'biquad' || effect === 'gain') ? offlineAudioCtx : tuna;
-                    return effects[effect](this.config, context, bufferSource);
-                }).filter(Boolean);
-
-                nodes.forEach((node) => {
-                    bufferSource.connect(node);
-                    node.connect(offlineAudioCtx.destination);
+                var previousNode = bufferSource;
+                effectNodes.forEach((node) => {
+                    previousNode.connect(node.input);
+                    previousNode = node.output;
                 });
+                previousNode.connect(offlineAudioCtx.destination);
             }
+
+            bufferSource.start();
 
             this.previousConfig = this.config;
             // Kick off the render, callback will contain rendered buffer in event
