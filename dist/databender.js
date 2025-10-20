@@ -5,6 +5,8 @@ var Databender = (function () {
 
     const isConnectable = (candidate) => candidate && typeof candidate.connect === 'function';
 
+    const isPromise = (candidate) => candidate && typeof candidate.then === 'function';
+
     const normalizeEffectNode = (candidate) => {
         if (!candidate) {
             return null;
@@ -28,35 +30,20 @@ var Databender = (function () {
         return Array.isArray(value) ? value : [value];
     };
 
-    const normalizeConstructorInput = (configOrOptions) => {
-        if (Array.isArray(configOrOptions)) {
-            return { effectsChain: configOrOptions, config: null };
-        }
-
-        if (configOrOptions && typeof configOrOptions === 'object' && (configOrOptions.effectsChain || configOrOptions.createEffectsChain || configOrOptions.config)) {
-            return {
-                config: configOrOptions.config || null,
-                effectsChain: configOrOptions.effectsChain || null,
-                createEffectsChain: configOrOptions.createEffectsChain || null
-            };
-        }
-
-        return { config: configOrOptions || null };
-    };
-
-    // Create a Databender instance
     class Databender {
-        constructor(configOrOptions, audioCtx) {
-            const options = normalizeConstructorInput(configOrOptions);
+        constructor({
+            config = {},
+            effectsChain = null,
+            chainMode = 'series',
+            audioCtx = null
+        } = {}) {
             this.audioCtx = audioCtx ? audioCtx : new AudioContext();
             this.channels = 1;
-            this.config = options.config || {};
+            this.config = config || {};
             this.configKeys = Object.keys(this.config);
             this.previousConfig = this.config;
-            this.effectsChain = options.effectsChain ? asArray(options.effectsChain) : null;
-            this.createEffectsChain = options.createEffectsChain && isFunction(options.createEffectsChain)
-                ? options.createEffectsChain
-                : null;
+            this.effectsChain = effectsChain ? asArray(effectsChain) : null;
+            this.chainMode = chainMode === 'parallel' ? 'parallel' : 'series';
 
             this.convert = function(image) {
                 if (image instanceof Image || image instanceof HTMLVideoElement) {
@@ -81,7 +68,9 @@ var Databender = (function () {
                 // This gives us the actual ArrayBuffer that contains the data
                 var nowBuffering = audioBuffer.getChannelData(0);
 
-                nowBuffering.set(this.imageData.data);
+                for (var i = 0; i < nowBuffering.length; i++) {
+                    nowBuffering[i] = (this.imageData.data[i] / 128) - 1;
+                }
 
                 return Promise.resolve(audioBuffer);
             };
@@ -100,7 +89,7 @@ var Databender = (function () {
                 this.config[effect][param] = value;
             };
 
-            this.render = function(buffer, bypass = false) {
+            this.render = async function(buffer, bypass = false) {
 
                 // Create offlineAudioCtx that will house our rendered buffer
                 var offlineAudioCtx = new OfflineAudioContext(this.channels, buffer.length * this.channels, this.audioCtx.sampleRate);
@@ -111,34 +100,56 @@ var Databender = (function () {
                 // Set buffer to audio buffer containing image data
                 bufferSource.buffer = buffer;
 
-                var resolveEffectsChain = function() {
+                var resolveEffectsChain = async function() {
                     if (bypass) {
                         return [];
                     }
 
                     var chainDefinition = null;
 
-                    if (this.createEffectsChain) {
-                        chainDefinition = this.createEffectsChain({ context: offlineAudioCtx, source: bufferSource, config: this.config });
-                    } else if (this.effectsChain) {
+                    if (this.effectsChain) {
                         chainDefinition = this.effectsChain;
-                    } 
+                    }
 
-                    return asArray(chainDefinition).reduce((accumulator, nodeCandidate) => {
+                    if (isPromise(chainDefinition)) {
+                        chainDefinition = await chainDefinition;
+                    }
+
+                    var candidates = asArray(chainDefinition);
+                    var resolvedNodes = [];
+
+                    for (var i = 0; i < candidates.length; i++) {
+                        var nodeCandidate = candidates[i];
                         var resolvedNode = nodeCandidate;
 
                         if (isFunction(resolvedNode)) {
                             resolvedNode = resolvedNode({ context: offlineAudioCtx, source: bufferSource, config: this.config });
                         }
 
-                        return accumulator.concat(asArray(resolvedNode));
-                    }, []);
+                        if (isPromise(resolvedNode)) {
+                            resolvedNode = await resolvedNode;
+                        }
+
+                        var normalizedNodes = asArray(resolvedNode);
+
+                        for (var j = 0; j < normalizedNodes.length; j++) {
+                            var node = normalizedNodes[j];
+                            resolvedNodes.push(isPromise(node) ? await node : node);
+                        }
+                    }
+
+                    return resolvedNodes;
                 }.bind(this);
 
-                var effectNodes = resolveEffectsChain().map(normalizeEffectNode).filter(Boolean);
+                var effectNodes = (await resolveEffectsChain()).map(normalizeEffectNode).filter(Boolean);
 
                 if (!effectNodes.length) {
                     bufferSource.connect(offlineAudioCtx.destination);
+                } else if (this.chainMode === 'parallel') {
+                    effectNodes.forEach((node) => {
+                        bufferSource.connect(node.input);
+                        node.output.connect(offlineAudioCtx.destination);
+                    });
                 } else {
                     var previousNode = bufferSource;
                     effectNodes.forEach((node) => {
@@ -163,8 +174,10 @@ var Databender = (function () {
                 // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
                 var clampedDataArray = new Uint8ClampedArray(buffer.length);
 
-                // set the renderedBuffer to Uint8ClampedArray to use in ImageData later
-                clampedDataArray.set(bufferData);
+                for (var k = 0; k < bufferData.length; k++) {
+                    var value = ((bufferData[k] + 1) * 128);
+                    clampedDataArray[k] = value < 0 ? 0 : (value > 255 ? 255 : value);
+                }
 
                 // putImageData requires an ImageData Object
                 // @see https://developer.mozilla.org/en-US/docs/Web/API/ImageData
@@ -196,4 +209,3 @@ var Databender = (function () {
     return Databender;
 
 })();
-//# sourceMappingURL=databender.js.map
