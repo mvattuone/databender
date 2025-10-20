@@ -28,31 +28,19 @@ const asArray = (value) => {
     return Array.isArray(value) ? value : [value];
 };
 
-const normalizeConstructorInput = (configOrOptions) => {
-    if (Array.isArray(configOrOptions)) {
-        return { effectsChain: configOrOptions, config: null };
-    }
-
-    if (configOrOptions && typeof configOrOptions === 'object' && (configOrOptions.effectsChain || configOrOptions.createEffectsChain || configOrOptions.config)) {
-        return {
-            config: configOrOptions.config || null,
-            effectsChain: configOrOptions.effectsChain || null,
-            createEffectsChain: configOrOptions.createEffectsChain || null
-        };
-    }
-
-    return { config: configOrOptions || null };
-};
-
 export default class Databender {
-    constructor(configOrOptions, audioCtx) {
-        const options = normalizeConstructorInput(configOrOptions);
+    constructor({
+        config = {},
+        effectsChain = null,
+        chainMode = 'series',
+        audioCtx = null
+    } = {}) {
         this.audioCtx = audioCtx ? audioCtx : new AudioContext();
         this.channels = 1;
-        this.config = options.config || {};
+        this.config = config || {};
         this.configKeys = Object.keys(this.config);
         this.previousConfig = this.config;
-        this.effectsChain = options.effectsChain ? asArray(options.effectsChain) : null;
+        this.effectsChain = effectsChain ? asArray(effectsChain) : null;
 
         this.convert = function(image) {
             if (image instanceof Image || image instanceof HTMLVideoElement) {
@@ -114,6 +102,7 @@ export default class Databender {
 
                 var chainDefinition = null;
 
+                if (this.effectsChain) {
                     chainDefinition = this.effectsChain;
                 }
 

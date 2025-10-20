@@ -47,7 +47,7 @@ The quickest way to get _something_ on the page:
         value: 0.0
       }
     };
-    const databender = new Databender(config);
+    const databender = new Databender({ config });
     databender.bend(img, context);
   };
 
@@ -67,7 +67,7 @@ Using an ES module aware bundler? You can import straight from npm:
 ```js
 import Databender from "databender";
 
-const databender = new Databender(config);
+const databender = new Databender({ config });
 ```
 
 Need to stick with a classic `<script>` tag that isn't module friendly? `npm run build` will drop an IIFE bundle into `dist/databender.js` that exposes `window.Databender` just like before. Drop that bundle on the page and the snippet above will still work.
@@ -79,19 +79,21 @@ You can inject any Web Audio nodes (Tone.js, Pizzicato, TunaJS, etc.) and they'l
 ```js
 import Databender from 'databender';
 
-const databender = new Databender([
-  ({ context }) => {
-    const filter = context.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 400;
-    return filter;
-  },
-  ({ context }) => {
-    const gain = context.createGain();
-    gain.gain.value = 0.8;
-    return gain;
-  }
-]);
+const databender = new Databender({
+  effectsChain: [
+    ({ context }) => {
+      const filter = context.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 400;
+      return filter;
+    },
+    ({ context }) => {
+      const gain = context.createGain();
+      gain.gain.value = 0.8;
+      return gain;
+    }
+  ]
+});
 
 databender.bend(img, context);
 ```
@@ -113,18 +115,20 @@ const swapPizzicatoContext = (EffectCtor, options) => ({ context }) => {
   return { input: effect.inputNode, output: effect.outputNode };
 };
 
-const databender = new Databender([
-  swapPizzicatoContext(Pizzicato.Effects.Delay, {
-    feedback: 0.6,
-    time: 0.4,
-    mix: 0.5
-  }),
-  swapPizzicatoContext(Pizzicato.Effects.LowPassFilter, {
-    frequency: 1200,
-    peak: 10,
-    mix: 0.4
-  })
-]);
+const databender = new Databender({
+  effectsChain: [
+    swapPizzicatoContext(Pizzicato.Effects.Delay, {
+      feedback: 0.6,
+      time: 0.4,
+      mix: 0.5
+    }),
+    swapPizzicatoContext(Pizzicato.Effects.LowPassFilter, {
+      frequency: 1200,
+      peak: 10,
+      mix: 0.4
+    })
+  ]
+});
 
 databender.bend(img, context);
 ```
