@@ -9,7 +9,7 @@ export default {
     file: 'dist/databender.js',
     name: 'Databender',
     format: 'iife',
-    sourcemap: true
+    sourcemap: false,
   },
   plugins: [
     resolve({
