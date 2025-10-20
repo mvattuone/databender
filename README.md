@@ -96,8 +96,6 @@ const databender = new Databender([
 databender.bend(img, context);
 ```
 
-You can also supply a `createEffectsChain` function if you need to build different chains per render. When using libraries like Tone.js or Pizzicato, return either the relevant `AudioNode` or an object shaped like `{ input: node.input, output: node.output }` so Databender knows how to wire things up.
-
 Effect factories can return plain nodes or promises that resolve to nodes. Databender waits on any promises before it starts rendering, which makes it possible to do async setup on the `OfflineAudioContext` (for example, loading an `AudioWorklet` module for each render).
 
 #### Example: Pizzicato effects

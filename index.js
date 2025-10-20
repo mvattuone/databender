@@ -53,9 +53,6 @@ export default class Databender {
         this.configKeys = Object.keys(this.config);
         this.previousConfig = this.config;
         this.effectsChain = options.effectsChain ? asArray(options.effectsChain) : null;
-        this.createEffectsChain = options.createEffectsChain && isFunction(options.createEffectsChain)
-            ? options.createEffectsChain
-            : null;
 
         this.convert = function(image) {
             if (image instanceof Image || image instanceof HTMLVideoElement) {
@@ -117,9 +114,6 @@ export default class Databender {
 
                 var chainDefinition = null;
 
-                if (this.createEffectsChain) {
-                    chainDefinition = this.createEffectsChain({ context: offlineAudioCtx, source: bufferSource, config: this.config });
-                } else if (this.effectsChain) {
                     chainDefinition = this.effectsChain;
                 }
 
