@@ -100,6 +100,8 @@ databender.bend(img, context);
 
 Effect factories can return plain nodes or promises that resolve to nodes. Databender waits on any promises before it starts rendering, which makes it possible to do async setup on the `OfflineAudioContext` (for example, loading an `AudioWorklet` module for each render).
 
+You can also decide how the chain is wired. By default every effect is connected in series. Pass `chainMode: 'parallel'` to fan the source out to each effect and feed each branch directly into the offline destination.
+
 #### Example: Pizzicato effects
 
 ```js
@@ -147,7 +149,8 @@ const useBitcrusher = async ({ context }) => {
 
 const databender = new Databender({
   config,
-  effectsChain: [useBitcrusher]
+  effectsChain: [useBitcrusher],
+  chainMode: 'parallel'
 });
 
 databender.bend(img, context);

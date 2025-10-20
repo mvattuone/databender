@@ -41,6 +41,7 @@ export default class Databender {
         this.configKeys = Object.keys(this.config);
         this.previousConfig = this.config;
         this.effectsChain = effectsChain ? asArray(effectsChain) : null;
+        this.chainMode = chainMode === 'parallel' ? 'parallel' : 'series';
 
         this.convert = function(image) {
             if (image instanceof Image || image instanceof HTMLVideoElement) {
@@ -140,6 +141,11 @@ export default class Databender {
 
             if (!effectNodes.length) {
                 bufferSource.connect(offlineAudioCtx.destination);
+            } else if (this.chainMode === 'parallel') {
+                effectNodes.forEach((node) => {
+                    bufferSource.connect(node.input);
+                    node.output.connect(offlineAudioCtx.destination);
+                });
             } else {
                 var previousNode = bufferSource;
                 effectNodes.forEach((node) => {
