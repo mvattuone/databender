@@ -66,7 +66,9 @@ export default class Databender {
             // This gives us the actual ArrayBuffer that contains the data
             var nowBuffering = audioBuffer.getChannelData(0);
 
-            nowBuffering.set(this.imageData.data);
+            for (var i = 0; i < nowBuffering.length; i++) {
+                nowBuffering[i] = (this.imageData.data[i] / 128) - 1;
+            }
 
             return Promise.resolve(audioBuffer);
         };
@@ -170,8 +172,10 @@ export default class Databender {
             // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
             var clampedDataArray = new Uint8ClampedArray(buffer.length);
 
-            // set the renderedBuffer to Uint8ClampedArray to use in ImageData later
-            clampedDataArray.set(bufferData);
+            for (var k = 0; k < bufferData.length; k++) {
+                var value = ((bufferData[k] + 1) * 128);
+                clampedDataArray[k] = value < 0 ? 0 : (value > 255 ? 255 : value);
+            }
 
             // putImageData requires an ImageData Object
             // @see https://developer.mozilla.org/en-US/docs/Web/API/ImageData
