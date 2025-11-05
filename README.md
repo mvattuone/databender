@@ -158,6 +158,26 @@ databender.bend(img, context);
 
 Because Databender spins up a brand new `OfflineAudioContext` for every render, the worklet module has to be registered on that context before the node is created. Returning a promise from your effect factory ensures the render waits for the module to load.
 
+### Source parameters
+
+Some tweaks (e.g. `detune` or `playbackRate`) must be applied directly to the `AudioBufferSourceNode` **before** it starts. Pass functions to `sourceParams` and they'll run prior to chaining any effects. Each factory receives the same payload (`{ context, source, config }`) as the regular effect chain.
+
+```js
+const databender = new Databender({
+  config,
+  sourceParams: [
+    ({ source, config }) => {
+      const value = config?.detune?.value ?? 0;
+      source.detune.value = value;
+    }
+  ],
+  effectsChain: [
+    useDelayEffect(),
+    useBitcrusher()
+  ]
+});
+```
+
 ### Prerequisites
 
 Google Chrome (ideally) and an open mind!

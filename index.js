@@ -33,6 +33,7 @@ export default class Databender {
         config = {},
         effectsChain = null,
         chainMode = 'series',
+        sourceParams = null,
         audioCtx = null
     } = {}) {
         this.audioCtx = audioCtx ? audioCtx : new AudioContext();
@@ -41,6 +42,7 @@ export default class Databender {
         this.configKeys = Object.keys(this.config);
         this.previousConfig = this.config;
         this.effectsChain = effectsChain ? asArray(effectsChain) : null;
+        this.sourceParams = sourceParams ? asArray(sourceParams) : null;
         this.chainMode = chainMode === 'parallel' ? 'parallel' : 'series';
 
         this.convert = function(image) {
@@ -138,6 +140,29 @@ export default class Databender {
 
                 return resolvedNodes;
             }.bind(this);
+
+            var applySourceParams = async function() {
+                if (bypass || !this.sourceParams) {
+                    return;
+                }
+
+                var candidates = asArray(this.sourceParams);
+
+                for (var i = 0; i < candidates.length; i++) {
+                    var candidate = candidates[i];
+                    var result = candidate;
+
+                    if (isFunction(result)) {
+                        result = result({ context: offlineAudioCtx, source: bufferSource, config: this.config });
+                    }
+
+                    if (isPromise(result)) {
+                        await result;
+                    }
+                }
+            }.bind(this);
+
+            await applySourceParams();
 
             var effectNodes = (await resolveEffectsChain()).map(normalizeEffectNode).filter(Boolean);
 
