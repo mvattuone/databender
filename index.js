@@ -44,6 +44,9 @@ export default class Databender {
         this.effectsChain = effectsChain ? asArray(effectsChain) : null;
         this.sourceParams = sourceParams ? asArray(sourceParams) : null;
         this.chainMode = chainMode === 'parallel' ? 'parallel' : 'series';
+        this.maxConcurrentRenders = 2;
+        this.activeRenderCount = 0;
+        this.renderQueue = [];
 
         this.convert = function(image) {
             if (image instanceof Image || image instanceof HTMLVideoElement) {
@@ -90,6 +93,27 @@ export default class Databender {
         };
 
         this.render = async function(buffer, bypass = false) {
+            const acquireRenderSlot = async () => {
+                if (this.activeRenderCount < this.maxConcurrentRenders) {
+                    this.activeRenderCount += 1;
+                    return;
+                }
+                await new Promise((resolve) => {
+                    this.renderQueue.push({ resolve });
+                });
+                this.activeRenderCount += 1;
+            };
+
+            const releaseRenderSlot = () => {
+                this.activeRenderCount = Math.max(0, this.activeRenderCount - 1);
+                const next = this.renderQueue.shift();
+                if (next && isFunction(next.resolve)) {
+                    next.resolve();
+                }
+            };
+
+            await acquireRenderSlot();
+            try {
 
             // Create offlineAudioCtx that will house our rendered buffer
             var offlineAudioCtx = new OfflineAudioContext(this.channels, buffer.length * this.channels, this.audioCtx.sampleRate);
@@ -187,6 +211,9 @@ export default class Databender {
             this.previousConfig = this.config;
             // Kick off the render, callback will contain rendered buffer in event
             return offlineAudioCtx.startRendering();
+            } finally {
+                releaseRenderSlot();
+            }
         };
 
         this.draw = function(buffer, context, sourceX = 0, sourceY = 0, x = 0, y = 0, sourceWidth = this.imageData.width, sourceHeight = this.imageData.height, targetWidth = window.innerWidth, targetHeight = window.innerHeight) {
