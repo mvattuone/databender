@@ -45,7 +45,7 @@ var Databender = (function () {
             this.previousConfig = this.config;
             this.effectsChain = effectsChain ? asArray(effectsChain) : null;
             this.sourceParams = sourceParams ? asArray(sourceParams) : null;
-            this.chainMode = chainMode === 'parallel' ? 'parallel' : 'series';
+            this.chainMode = this.config.chainMode;
             this.maxConcurrentRenders = 2;
             this.activeRenderCount = 0;
             this.renderQueue = [];
@@ -89,6 +89,13 @@ var Databender = (function () {
 
             this.updateConfig = function(effect, param, value) {
                 if (!this.configKeys.length || !this.config[effect]) {
+                    return;
+                }
+                if (typeof param === 'undefined') {
+                    this.config[effect] = value;
+                    if (effect === 'chainMode') {
+                        this.chainMode = value;
+                    }
                     return;
                 }
                 this.config[effect][param] = value;
