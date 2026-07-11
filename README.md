@@ -63,7 +63,7 @@ import Databender from "databender";
 const databender = new Databender();
 ```
 
-Need to stick with a classic `<script>` tag that isn't module friendly? `npm run build` will drop an IIFE bundle into `dist/databender.js` that exposes `window.Databender` just like before. Drop that bundle on the page and the snippet above will still work.
+Need to stick with a classic `<script>` tag that isn't module friendly? The package includes `dist/databender.js`, an IIFE bundle that exposes `window.Databender`. Load that file on the page and the snippet above will work.
 
 ### Custom effect chains
 
