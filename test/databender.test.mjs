@@ -138,6 +138,32 @@ test('captures one config snapshot for an entire render', async (t) => {
     assert.equal(databender.configHasChanged(), true);
 });
 
+test('does not let an older render regress config bookkeeping', async (t) => {
+    const offline = installOfflineAudioContext();
+    t.after(offline.restore);
+    const firstRenderSetup = createDeferred();
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        config: { amount: 1 },
+        sourceParams: [async ({ config }) => {
+            if (config.amount === 1) {
+                await firstRenderSetup.promise;
+            }
+        }]
+    });
+    const buffer = new MockAudioBuffer(1, 4, 48000);
+
+    const firstRender = databender.render(buffer);
+    await flushTasks();
+    databender.updateConfig('amount', undefined, 2);
+    await databender.render(buffer);
+    assert.equal(databender.configHasChanged(), false);
+
+    firstRenderSetup.resolve();
+    await firstRender;
+    assert.equal(databender.configHasChanged(), false);
+});
+
 test('applies source parameters before creating effects and starting', async (t) => {
     const offline = installOfflineAudioContext();
     t.after(offline.restore);

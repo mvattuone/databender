@@ -187,6 +187,7 @@ var Databender = (function () {
                 try {
                 const renderConfig = this.config;
                 const renderChainMode = this.chainMode;
+                this.previousConfig = renderConfig;
 
                 // Create offlineAudioCtx that will house our rendered buffer
                 var offlineAudioCtx = new OfflineAudioContext(this.channels, buffer.length * this.channels, this.audioCtx.sampleRate);
@@ -281,7 +282,6 @@ var Databender = (function () {
 
                 bufferSource.start();
 
-                this.previousConfig = renderConfig;
                 // Kick off the render, callback will contain rendered buffer in event
                 const renderedBuffer = await offlineAudioCtx.startRendering();
                 const imageData = imageDataByBuffer.get(buffer);
