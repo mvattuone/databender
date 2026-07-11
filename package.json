@@ -8,9 +8,13 @@
     ".": "./index.js",
     "./dist/databender.js": "./dist/databender.js"
   },
+  "files": [
+    "index.js",
+    "dist"
+  ],
   "scripts": {
     "build": "rollup -c",
-    "prepublish": "npm run build",
+    "prepack": "npm run build",
     "test": "node --test test/*.test.mjs"
   },
   "keywords": [
