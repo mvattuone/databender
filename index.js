@@ -334,7 +334,18 @@ export default class Databender {
                     const imageData = imageDataByBuffer.get(buffer) || this.imageData;
                     return this.render(buffer).then((renderedBuffer) => ({ renderedBuffer, imageData }));
                 })
-                .then(({ renderedBuffer, imageData }) => this.draw(renderedBuffer, context, sourceX, sourceY, x, y, imageData.width, imageData.height, targetWidth, targetHeight));
+                .then(({ renderedBuffer, imageData }) => this.draw(
+                    renderedBuffer,
+                    context,
+                    sourceX,
+                    sourceY,
+                    x,
+                    y,
+                    Math.max(0, imageData.width - sourceX),
+                    Math.max(0, imageData.height - sourceY),
+                    targetWidth,
+                    targetHeight
+                ));
         };
 
         return this;

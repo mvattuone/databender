@@ -447,3 +447,22 @@ test('places transformed pixels at the origin before applying a source crop', (t
     assert.equal(drawCalls.length, 1);
     assert.deepEqual(drawCalls[0].slice(1), [1, 2, 2, 3, 3, 4, 40, 50]);
 });
+
+test('keeps bend crop rectangles inside the source image', async () => {
+    const databender = new Databender({ audioCtx: createAudioContext() });
+    const imageData = {
+        width: 10,
+        height: 11,
+        data: new Uint8ClampedArray(10 * 11 * 4)
+    };
+    let drawArguments;
+    databender.render = async (buffer) => buffer;
+    databender.draw = (...args) => {
+        drawArguments = args;
+    };
+
+    await databender.bend(imageData, {}, 2, 3, 0, 0, 100, 100);
+
+    assert.equal(drawArguments[6], 8);
+    assert.equal(drawArguments[7], 8);
+});
