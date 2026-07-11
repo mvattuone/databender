@@ -7,7 +7,7 @@ Inspired by [David Byrne](https://www.youtube.com/watch?v=Gea9SYUdJeY) and [Audi
 
 The quickest way to get _something_ on the page:
 
-- Run `npm i databender` in your project and make sure you have an image to point to somewhere.
+- Run `npm i databender@alpha` in your project and make sure you have an image to point to somewhere.
 - Paste the following snippet into `index.html` and point the image to the location of the image you'd like to bend.
 
 ```html
