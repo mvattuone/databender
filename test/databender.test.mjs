@@ -4,6 +4,7 @@ import test from 'node:test';
 import Databender from '../index.js';
 import {
     MockAudioBuffer,
+    MockAudioNode,
     createAudioContext,
     createDeferred,
     installOfflineAudioContext
@@ -167,6 +168,38 @@ test('bypass skips source parameters and effects', async (t) => {
     const [context] = offline.contexts;
     assert.equal(invoked, false);
     assert.deepEqual(context.source.connections, [context.destination]);
+});
+
+test('rejects effect nodes that were created outside a render factory', async (t) => {
+    const offline = installOfflineAudioContext();
+    t.after(offline.restore);
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        effectsChain: [new MockAudioNode('external-effect')]
+    });
+
+    await assert.rejects(
+        databender.render(new MockAudioBuffer(1, 4, 48000)),
+        /effectsChain entries must be factory functions/
+    );
+    assert.equal(databender.activeRenderCount, 0);
+});
+
+test('rejects effect factories that return nodes from another context', async (t) => {
+    const offline = installOfflineAudioContext();
+    t.after(offline.restore);
+    const externalContext = {};
+    const externalNode = new MockAudioNode('external-effect');
+    externalNode.context = externalContext;
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        effectsChain: [() => externalNode]
+    });
+
+    await assert.rejects(
+        databender.render(new MockAudioBuffer(1, 4, 48000)),
+        /provided OfflineAudioContext/
+    );
 });
 
 test('keeps excess renders queued until an active render settles', async (t) => {

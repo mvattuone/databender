@@ -7,16 +7,20 @@ var Databender = (function () {
 
     const isPromise = (candidate) => candidate && typeof candidate.then === 'function';
 
-    const normalizeEffectNode = (candidate) => {
+    const normalizeEffectNode = (candidate, context) => {
         if (!candidate) {
             return null;
         }
 
-        const input = isConnectable(candidate.input) ? candidate.input : candidate;
-        const output = isConnectable(candidate.output) ? candidate.output : input;
+        const input = candidate.input ?? candidate;
+        const output = candidate.output ?? input;
 
         if (!isConnectable(input) || !isConnectable(output)) {
-            return null;
+            throw new TypeError('Effect factories must return an AudioNode or an { input, output } pair');
+        }
+
+        if ([input, output].some((node) => node.context && node.context !== context)) {
+            throw new TypeError('Effect factories must create nodes with the provided OfflineAudioContext');
         }
 
         return { input, output };
@@ -161,11 +165,10 @@ var Databender = (function () {
 
                     for (var i = 0; i < candidates.length; i++) {
                         var nodeCandidate = candidates[i];
-                        var resolvedNode = nodeCandidate;
-
-                        if (isFunction(resolvedNode)) {
-                            resolvedNode = resolvedNode({ context: offlineAudioCtx, source: bufferSource, config: renderConfig });
+                        if (!isFunction(nodeCandidate)) {
+                            throw new TypeError('effectsChain entries must be factory functions');
                         }
+                        var resolvedNode = nodeCandidate({ context: offlineAudioCtx, source: bufferSource, config: renderConfig });
 
                         if (isPromise(resolvedNode)) {
                             resolvedNode = await resolvedNode;
@@ -191,11 +194,10 @@ var Databender = (function () {
 
                     for (var i = 0; i < candidates.length; i++) {
                         var candidate = candidates[i];
-                        var result = candidate;
-
-                        if (isFunction(result)) {
-                            result = result({ context: offlineAudioCtx, source: bufferSource, config: renderConfig });
+                        if (!isFunction(candidate)) {
+                            throw new TypeError('sourceParams entries must be functions');
                         }
+                        var result = candidate({ context: offlineAudioCtx, source: bufferSource, config: renderConfig });
 
                         if (isPromise(result)) {
                             await result;
@@ -205,7 +207,9 @@ var Databender = (function () {
 
                 await applySourceParams();
 
-                var effectNodes = (await resolveEffectsChain()).map(normalizeEffectNode).filter(Boolean);
+                var effectNodes = (await resolveEffectsChain())
+                    .filter(Boolean)
+                    .map((node) => normalizeEffectNode(node, offlineAudioCtx));
 
                 if (!effectNodes.length) {
                     bufferSource.connect(offlineAudioCtx.destination);

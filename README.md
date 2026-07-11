@@ -74,7 +74,7 @@ Need to stick with a classic `<script>` tag that isn't module friendly? `npm run
 
 ### Custom effect chains
 
-You can inject any Web Audio nodes (Tone.js, Pizzicato, TunaJS, etc.) and they'll be chained in the order you provide. 
+Pass effect factory functions and they'll be chained in the order you provide. Each factory receives the new `OfflineAudioContext` used for that render, plus the source node and current config.
 
 ```js
 import Databender from 'databender';
@@ -98,7 +98,9 @@ const databender = new Databender({
 databender.bend(img, context);
 ```
 
-Effect factories can return plain nodes or promises that resolve to nodes. Databender waits on any promises before it starts rendering, which makes it possible to do async setup on the `OfflineAudioContext` (for example, loading an `AudioWorklet` module for each render).
+Effect factories can return nodes, `{ input, output }` pairs, arrays of either, or promises that resolve to those values. Databender waits on any promises before it starts rendering, which makes it possible to do async setup on the `OfflineAudioContext` (for example, loading an `AudioWorklet` module for each render).
+
+Effects must be factories rather than pre-created nodes. Web Audio nodes belong to the context that created them, while Databender creates a fresh offline context for every render. Creating each node from the supplied `context` keeps the graph valid across repeated and concurrent renders.
 
 You can also decide how the chain is wired. By default every effect is connected in series. Pass `chainMode: 'parallel'` to fan the source out to each effect and feed each branch directly into the offline destination.
 
