@@ -49,6 +49,7 @@ var Databender = (function () {
             this.maxConcurrentRenders = 2;
             this.activeRenderCount = 0;
             this.renderQueue = [];
+            const imageDataByBuffer = new WeakMap();
 
             this.convert = function(image) {
                 if (image instanceof Image || image instanceof HTMLVideoElement) {
@@ -77,6 +78,7 @@ var Databender = (function () {
                     nowBuffering[i] = (this.imageData.data[i] / 128) - 1;
                 }
 
+                imageDataByBuffer.set(audioBuffer, this.imageData);
                 return Promise.resolve(audioBuffer);
             };
 
@@ -219,13 +221,22 @@ var Databender = (function () {
 
                 this.previousConfig = this.config;
                 // Kick off the render, callback will contain rendered buffer in event
-                return await offlineAudioCtx.startRendering();
+                const renderedBuffer = await offlineAudioCtx.startRendering();
+                const imageData = imageDataByBuffer.get(buffer);
+                if (imageData) {
+                    imageDataByBuffer.set(renderedBuffer, imageData);
+                }
+                return renderedBuffer;
                 } finally {
                     releaseRenderSlot();
                 }
             };
 
-            this.draw = function(buffer, context, sourceX = 0, sourceY = 0, x = 0, y = 0, sourceWidth = this.imageData.width, sourceHeight = this.imageData.height, targetWidth = window.innerWidth, targetHeight = window.innerHeight) {
+            this.draw = function(buffer, context, sourceX = 0, sourceY = 0, x = 0, y = 0, sourceWidth, sourceHeight, targetWidth = window.innerWidth, targetHeight = window.innerHeight) {
+                const imageData = imageDataByBuffer.get(buffer) || this.imageData;
+                const resolvedSourceWidth = sourceWidth ?? imageData.width;
+                const resolvedSourceHeight = sourceHeight ?? imageData.height;
+
                 // Get buffer data
                 var bufferData = buffer.getChannelData(0);
 
@@ -240,25 +251,28 @@ var Databender = (function () {
 
                 // putImageData requires an ImageData Object
                 // @see https://developer.mozilla.org/en-US/docs/Web/API/ImageData
-                const transformedImageData = new ImageData(this.imageData.width, this.imageData.height);
+                const transformedImageData = new ImageData(imageData.width, imageData.height);
                 transformedImageData.data.set(clampedDataArray);
 
                 const tmpCanvas = typeof OffscreenCanvas !== 'undefined'
-                    ? new OffscreenCanvas(this.imageData.width, this.imageData.height)
+                    ? new OffscreenCanvas(imageData.width, imageData.height)
                     : (() => {
                         const element = document.createElement('canvas');
-                        element.width = this.imageData.width;
-                        element.height = this.imageData.height;
+                        element.width = imageData.width;
+                        element.height = imageData.height;
                         return element;
                     })();
                 tmpCanvas.getContext('2d').putImageData(transformedImageData, sourceX, sourceY);
-                context.drawImage(tmpCanvas, sourceX, sourceY, sourceWidth, sourceHeight, x, y, targetWidth, targetHeight);
+                context.drawImage(tmpCanvas, sourceX, sourceY, resolvedSourceWidth, resolvedSourceHeight, x, y, targetWidth, targetHeight);
             };
 
             this.bend = function(data, context, sourceX = 0, sourceY = 0, x = 0, y = 0, targetWidth = window.innerWidth, targetHeight = window.innerHeight) {
                 return this.convert(data)
-                    .then((buffer) => this.render(buffer))
-                    .then((buffer) => this.draw(buffer, context, sourceX, sourceY, x, y, this.imageData.width, this.imageData.height, targetWidth, targetHeight));
+                    .then((buffer) => {
+                        const imageData = imageDataByBuffer.get(buffer) || this.imageData;
+                        return this.render(buffer).then((renderedBuffer) => ({ renderedBuffer, imageData }));
+                    })
+                    .then(({ renderedBuffer, imageData }) => this.draw(renderedBuffer, context, sourceX, sourceY, x, y, imageData.width, imageData.height, targetWidth, targetHeight));
             };
 
             return this;
