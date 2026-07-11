@@ -333,18 +333,22 @@ var Databender = (function () {
                         const imageData = imageDataByBuffer.get(buffer) || this.imageData;
                         return this.render(buffer).then((renderedBuffer) => ({ renderedBuffer, imageData }));
                     })
-                    .then(({ renderedBuffer, imageData }) => this.draw(
-                        renderedBuffer,
-                        context,
-                        sourceX,
-                        sourceY,
-                        x,
-                        y,
-                        Math.max(0, imageData.width - sourceX),
-                        Math.max(0, imageData.height - sourceY),
-                        targetWidth,
-                        targetHeight
-                    ));
+                    .then(({ renderedBuffer, imageData }) => {
+                        const resolvedSourceX = Math.min(imageData.width, Math.max(0, sourceX));
+                        const resolvedSourceY = Math.min(imageData.height, Math.max(0, sourceY));
+                        return this.draw(
+                            renderedBuffer,
+                            context,
+                            resolvedSourceX,
+                            resolvedSourceY,
+                            x,
+                            y,
+                            imageData.width - resolvedSourceX,
+                            imageData.height - resolvedSourceY,
+                            targetWidth,
+                            targetHeight
+                        );
+                    });
             };
 
             return this;

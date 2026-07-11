@@ -505,4 +505,11 @@ test('keeps bend crop rectangles inside the source image', async () => {
 
     assert.equal(drawArguments[6], 8);
     assert.equal(drawArguments[7], 8);
+
+    await databender.bend(imageData, {}, -2, -3, 0, 0, 100, 100);
+
+    assert.equal(drawArguments[2], 0);
+    assert.equal(drawArguments[3], 0);
+    assert.equal(drawArguments[6], 10);
+    assert.equal(drawArguments[7], 11);
 });
