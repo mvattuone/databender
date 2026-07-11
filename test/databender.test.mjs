@@ -64,6 +64,65 @@ test('supports config.chainMode as a backwards-compatible fallback', () => {
     assert.equal(databender.chainMode, 'parallel');
 });
 
+test('tracks immutable config updates, including missing and falsy keys', async (t) => {
+    const offline = installOfflineAudioContext();
+    t.after(offline.restore);
+    const initialConfig = {
+        enabled: false,
+        gain: { value: 1 }
+    };
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        config: initialConfig
+    });
+
+    databender.updateConfig('gain', 'value', 2);
+    assert.equal(databender.config.gain.value, 2);
+    assert.equal(initialConfig.gain.value, 1);
+    assert.equal(databender.configHasChanged(), true);
+
+    await databender.render(new MockAudioBuffer(1, 4, 48000));
+    assert.equal(databender.configHasChanged(), false);
+
+    databender.updateConfig('enabled', undefined, true);
+    databender.updateConfig('mix', 'value', 0.5);
+    databender.updateConfig('chainMode', undefined, 'parallel');
+    assert.equal(databender.config.enabled, true);
+    assert.deepEqual(databender.config.mix, { value: 0.5 });
+    assert.equal(databender.chainMode, 'parallel');
+    assert.equal(databender.configHasChanged(), true);
+});
+
+test('captures one config snapshot for an entire render', async (t) => {
+    const offline = installOfflineAudioContext();
+    t.after(offline.restore);
+    const sourceParam = createDeferred();
+    const observedConfigs = [];
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        config: { amount: 1 },
+        sourceParams: [async ({ config }) => {
+            observedConfigs.push(config);
+            await sourceParam.promise;
+        }],
+        effectsChain: [({ context, config }) => {
+            observedConfigs.push(config);
+            return context.createGain();
+        }]
+    });
+
+    const render = databender.render(new MockAudioBuffer(1, 4, 48000));
+    await flushTasks();
+    databender.updateConfig('amount', undefined, 2);
+    sourceParam.resolve();
+    await render;
+
+    assert.equal(observedConfigs.length, 2);
+    assert.equal(observedConfigs[0], observedConfigs[1]);
+    assert.equal(observedConfigs[0].amount, 1);
+    assert.equal(databender.configHasChanged(), true);
+});
+
 test('applies source parameters before creating effects and starting', async (t) => {
     const offline = installOfflineAudioContext();
     t.after(offline.restore);

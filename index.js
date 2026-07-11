@@ -90,17 +90,19 @@ export default class Databender {
         };
 
         this.updateConfig = function(effect, param, value) {
-            if (!this.configKeys.length || !this.config[effect]) {
-                return;
-            }
             if (typeof param === 'undefined') {
-                this.config[effect] = value;
+                this.config = { ...this.config, [effect]: value };
                 if (effect === 'chainMode') {
-                    this.chainMode = value;
+                    this.chainMode = normalizeChainMode(value);
                 }
-                return;
+            } else {
+                const currentEffectConfig = this.config[effect];
+                const nextEffectConfig = currentEffectConfig && typeof currentEffectConfig === 'object'
+                    ? { ...currentEffectConfig, [param]: value }
+                    : { [param]: value };
+                this.config = { ...this.config, [effect]: nextEffectConfig };
             }
-            this.config[effect][param] = value;
+            this.configKeys = Object.keys(this.config);
         };
 
         this.render = async function(buffer, bypass = false) {
@@ -125,6 +127,8 @@ export default class Databender {
 
             await acquireRenderSlot();
             try {
+            const renderConfig = this.config;
+            const renderChainMode = this.chainMode;
 
             // Create offlineAudioCtx that will house our rendered buffer
             var offlineAudioCtx = new OfflineAudioContext(this.channels, buffer.length * this.channels, this.audioCtx.sampleRate);
@@ -158,7 +162,7 @@ export default class Databender {
                     var resolvedNode = nodeCandidate;
 
                     if (isFunction(resolvedNode)) {
-                        resolvedNode = resolvedNode({ context: offlineAudioCtx, source: bufferSource, config: this.config });
+                        resolvedNode = resolvedNode({ context: offlineAudioCtx, source: bufferSource, config: renderConfig });
                     }
 
                     if (isPromise(resolvedNode)) {
@@ -188,7 +192,7 @@ export default class Databender {
                     var result = candidate;
 
                     if (isFunction(result)) {
-                        result = result({ context: offlineAudioCtx, source: bufferSource, config: this.config });
+                        result = result({ context: offlineAudioCtx, source: bufferSource, config: renderConfig });
                     }
 
                     if (isPromise(result)) {
@@ -203,7 +207,7 @@ export default class Databender {
 
             if (!effectNodes.length) {
                 bufferSource.connect(offlineAudioCtx.destination);
-            } else if (this.chainMode === 'parallel') {
+            } else if (renderChainMode === 'parallel') {
                 effectNodes.forEach((node) => {
                     bufferSource.connect(node.input);
                     node.output.connect(offlineAudioCtx.destination);
@@ -219,7 +223,7 @@ export default class Databender {
 
             bufferSource.start();
 
-            this.previousConfig = this.config;
+            this.previousConfig = renderConfig;
             // Kick off the render, callback will contain rendered buffer in event
             const renderedBuffer = await offlineAudioCtx.startRendering();
             const imageData = imageDataByBuffer.get(buffer);
