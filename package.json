@@ -3,6 +3,11 @@
   "version": "2.0.0-alpha.3",
   "description": "Create interesting visuals by misusing the Web Audio API",
   "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./dist/databender.js": "./dist/databender.js"
+  },
   "scripts": {
     "build": "rollup -c",
     "prepublish": "npm run build",
