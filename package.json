@@ -1,6 +1,6 @@
 {
   "name": "databender",
-  "version": "2.0.0-alpha.3",
+  "version": "2.0.0-alpha.4",
   "description": "Create interesting visuals by misusing the Web Audio API",
   "main": "index.js",
   "types": "index.d.ts",
