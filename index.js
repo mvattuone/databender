@@ -266,7 +266,7 @@ export default class Databender {
                     element.height = imageData.height;
                     return element;
                 })();
-            tmpCanvas.getContext('2d').putImageData(transformedImageData, sourceX, sourceY);
+            tmpCanvas.getContext('2d').putImageData(transformedImageData, 0, 0);
             context.drawImage(tmpCanvas, sourceX, sourceY, resolvedSourceWidth, resolvedSourceHeight, x, y, targetWidth, targetHeight);
         };
 

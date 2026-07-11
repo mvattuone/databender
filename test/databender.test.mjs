@@ -262,3 +262,64 @@ test('keeps image dimensions local to concurrent bend operations', async (t) => 
         { sourceWidth: 10, sourceHeight: 11 }
     ]);
 });
+
+test('places transformed pixels at the origin before applying a source crop', (t) => {
+    const originalImageData = globalThis.ImageData;
+    const originalOffscreenCanvas = globalThis.OffscreenCanvas;
+    const putCalls = [];
+    const drawCalls = [];
+
+    globalThis.ImageData = class {
+        constructor(width, height) {
+            this.width = width;
+            this.height = height;
+            this.data = new Uint8ClampedArray(width * height * 4);
+        }
+    };
+    globalThis.OffscreenCanvas = class {
+        constructor(width, height) {
+            this.width = width;
+            this.height = height;
+        }
+
+        getContext() {
+            return {
+                putImageData(...args) {
+                    putCalls.push(args);
+                }
+            };
+        }
+    };
+    t.after(() => {
+        if (typeof originalImageData === 'undefined') {
+            delete globalThis.ImageData;
+        } else {
+            globalThis.ImageData = originalImageData;
+        }
+        if (typeof originalOffscreenCanvas === 'undefined') {
+            delete globalThis.OffscreenCanvas;
+        } else {
+            globalThis.OffscreenCanvas = originalOffscreenCanvas;
+        }
+    });
+
+    const databender = new Databender({ audioCtx: createAudioContext() });
+    databender.imageData = {
+        width: 4,
+        height: 5,
+        data: new Uint8ClampedArray(4 * 5 * 4)
+    };
+    const context = {
+        drawImage(...args) {
+            drawCalls.push(args);
+        }
+    };
+    const buffer = new MockAudioBuffer(1, 4 * 5 * 4, 48000);
+
+    databender.draw(buffer, context, 1, 2, 3, 4, 2, 3, 20, 30);
+
+    assert.equal(putCalls.length, 1);
+    assert.deepEqual(putCalls[0].slice(1), [0, 0]);
+    assert.equal(drawCalls.length, 1);
+    assert.deepEqual(drawCalls[0].slice(1), [1, 2, 2, 3, 3, 4, 20, 30]);
+});
