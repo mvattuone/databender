@@ -28,11 +28,13 @@ const asArray = (value) => {
     return Array.isArray(value) ? value : [value];
 };
 
+const normalizeChainMode = (value) => value === 'parallel' ? 'parallel' : 'series';
+
 export default class Databender {
     constructor({
         config = {},
         effectsChain = null,
-        chainMode = 'series',
+        chainMode,
         sourceParams = null,
         audioCtx = null
     } = {}) {
@@ -43,7 +45,7 @@ export default class Databender {
         this.previousConfig = this.config;
         this.effectsChain = effectsChain ? asArray(effectsChain) : null;
         this.sourceParams = sourceParams ? asArray(sourceParams) : null;
-        this.chainMode = this.config.chainMode;
+        this.chainMode = normalizeChainMode(chainMode ?? this.config.chainMode);
         this.maxConcurrentRenders = 2;
         this.activeRenderCount = 0;
         this.renderQueue = [];

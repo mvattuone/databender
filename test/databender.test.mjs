@@ -33,6 +33,37 @@ test('connects effect factories in series by default', async (t) => {
     assert.equal(context.source.started, true);
 });
 
+test('connects effects in parallel when requested by the public option', async (t) => {
+    const offline = installOfflineAudioContext();
+    t.after(offline.restore);
+
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        chainMode: 'parallel',
+        effectsChain: [
+            ({ context }) => context.createGain(),
+            ({ context }) => context.createGain()
+        ]
+    });
+
+    await databender.render(new MockAudioBuffer(1, 4, 48000));
+
+    const [context] = offline.contexts;
+    const [firstEffect, secondEffect] = context.nodes;
+    assert.deepEqual(context.source.connections, [firstEffect, secondEffect]);
+    assert.deepEqual(firstEffect.connections, [context.destination]);
+    assert.deepEqual(secondEffect.connections, [context.destination]);
+});
+
+test('supports config.chainMode as a backwards-compatible fallback', () => {
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        config: { chainMode: 'parallel' }
+    });
+
+    assert.equal(databender.chainMode, 'parallel');
+});
+
 test('applies source parameters before creating effects and starting', async (t) => {
     const offline = installOfflineAudioContext();
     t.after(offline.restore);
