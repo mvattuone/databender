@@ -1,9 +1,7 @@
 # Databender
 
-This module allows for generation interesting visuals by misusing the Web Audio API.
+This module creates interesting visuals by deliberately misusing the Web Audio API.
 Inspired by [David Byrne](https://www.youtube.com/watch?v=Gea9SYUdJeY) and [AudioShop](https://github.com/robertfoss/audio_shop/)
-
-Full API documentation and such is _coming soon_.
 
 ## Getting Started
 
@@ -62,7 +60,7 @@ Using an ES module aware bundler? You can import straight from npm:
 ```js
 import Databender from "databender";
 
-const databender = new Databender({ config });
+const databender = new Databender();
 ```
 
 Need to stick with a classic `<script>` tag that isn't module friendly? `npm run build` will drop an IIFE bundle into `dist/databender.js` that exposes `window.Databender` just like before. Drop that bundle on the page and the snippet above will still work.
@@ -106,12 +104,14 @@ import Databender from 'databender';
 import Pizzicato from 'pizzicato';
 
 const swapPizzicatoContext = (EffectCtor, options) => ({ context }) => {
-  // swap pizzicato internal context=
   const previous = Pizzicato.context;
   Pizzicato.context = context;
-  const effect = new EffectCtor(options);
-  Pizzicato.context = previous;
-  return { input: effect.inputNode, output: effect.outputNode };
+  try {
+    const effect = new EffectCtor(options);
+    return { input: effect.inputNode, output: effect.outputNode };
+  } finally {
+    Pizzicato.context = previous;
+  }
 };
 
 const databender = new Databender({
@@ -175,9 +175,60 @@ const databender = new Databender({
 });
 ```
 
-### Prerequisites
+## API reference
 
-Google Chrome (ideally) and an open mind!
+TypeScript declarations are included with the package.
+
+### `new Databender(options?)`
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `config` | `{}` | Values passed unchanged to every effect and source-parameter factory. |
+| `effectsChain` | `null` | One effect factory or an array of factories. |
+| `chainMode` | `'series'` | Use `'parallel'` to fan the source out to every effect. |
+| `sourceParams` | `null` | One function or an array of functions that configure the source before it starts. |
+| `audioCtx` | new `AudioContext()` | Context used to allocate input buffers and select the sample rate. Reuse the Databender instance or provide your own context. |
+
+Both factory types receive `{ context, source, config }`. The `context` is the `OfflineAudioContext` for that specific render, so nodes must be created inside a factory rather than ahead of time.
+
+### `bend(source, context, sourceX?, sourceY?, x?, y?, targetWidth?, targetHeight?)`
+
+Converts, renders, and draws an image in one call. `source` may be `ImageData`, an image or video element, a canvas, an `OffscreenCanvas`, or an `ImageBitmap`. The returned promise resolves after drawing is complete.
+
+The source defaults to the complete image. A nonzero `sourceX` or `sourceY` crops from that origin to the opposite edge. The target size defaults to `context.canvas.width` and `context.canvas.height`, then to the viewport when the context has no canvas.
+
+```js
+await databender.bend(image, canvasContext);
+```
+
+### Lower-level methods
+
+- `convert(source)` returns a `Promise<AudioBuffer>` containing normalized RGBA bytes.
+- `render(buffer, bypass = false)` runs the buffer through a fresh offline graph. With `bypass` enabled, it skips source parameters and effects. At most two renders run concurrently; additional calls wait in FIFO order.
+- `draw(buffer, context, sourceX?, sourceY?, x?, y?, sourceWidth?, sourceHeight?, targetWidth?, targetHeight?)` draws a rendered buffer. Unlike the other pipeline methods, it is synchronous.
+
+Conversion, rendering, and `bend()` report failures by rejecting their promises. Cross-origin image and video sources must provide CORS headers or canvas pixel access will reject with a browser security error.
+
+### Updating config
+
+Use `updateConfig()` rather than mutating `databender.config` directly. Updates replace the affected config branch, so each in-flight render keeps one consistent snapshot.
+
+```js
+databender.updateConfig('filter', 'frequency', 800);
+databender.updateConfig('chainMode', undefined, 'parallel');
+
+if (databender.configHasChanged()) {
+  await databender.bend(image, canvasContext);
+}
+```
+
+`configHasChanged()` reports whether `updateConfig()` has changed the configuration since the most recent render began.
+
+### Browser requirements
+
+A modern browser with the Web Audio API, `OfflineAudioContext`, and the Canvas 2D API. Native ES module consumers can import the package root; classic scripts can load `dist/databender.js` and use `window.Databender`.
+
+Databender turns all four RGBA bytes into audio samples, so image size directly controls render cost. Start with modest input dimensions when using expensive effects or rapid interaction.
 
 ## Contributing
 
