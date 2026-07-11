@@ -219,7 +219,7 @@ var Databender = (function () {
 
                 this.previousConfig = this.config;
                 // Kick off the render, callback will contain rendered buffer in event
-                return offlineAudioCtx.startRendering();
+                return await offlineAudioCtx.startRendering();
                 } finally {
                     releaseRenderSlot();
                 }

@@ -5,8 +5,11 @@ import Databender from '../index.js';
 import {
     MockAudioBuffer,
     createAudioContext,
+    createDeferred,
     installOfflineAudioContext
 } from './helpers/web-audio.mjs';
+
+const flushTasks = () => new Promise((resolve) => setImmediate(resolve));
 
 test('connects effect factories in series by default', async (t) => {
     const offline = installOfflineAudioContext();
@@ -74,4 +77,42 @@ test('bypass skips source parameters and effects', async (t) => {
     const [context] = offline.contexts;
     assert.equal(invoked, false);
     assert.deepEqual(context.source.connections, [context.destination]);
+});
+
+test('keeps excess renders queued until an active render settles', async (t) => {
+    const pendingRenders = [];
+    const offline = installOfflineAudioContext({
+        startRendering() {
+            const deferred = createDeferred();
+            pendingRenders.push(deferred);
+            return deferred.promise;
+        }
+    });
+    t.after(offline.restore);
+
+    const databender = new Databender({ audioCtx: createAudioContext() });
+    const buffer = new MockAudioBuffer(1, 4, 48000);
+    const renders = [
+        databender.render(buffer),
+        databender.render(buffer),
+        databender.render(buffer)
+    ];
+
+    await flushTasks();
+
+    assert.equal(offline.contexts.length, 2);
+    assert.equal(databender.activeRenderCount, 2);
+    assert.equal(databender.renderQueue.length, 1);
+
+    pendingRenders[0].resolve(buffer);
+    await flushTasks();
+
+    assert.equal(offline.contexts.length, 3);
+    assert.equal(databender.activeRenderCount, 2);
+    assert.equal(databender.renderQueue.length, 0);
+
+    pendingRenders.slice(1).forEach(({ resolve }) => resolve(buffer));
+    await Promise.all(renders);
+
+    assert.equal(databender.activeRenderCount, 0);
 });
