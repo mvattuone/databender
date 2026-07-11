@@ -40,7 +40,13 @@ export interface DatabenderOptions<TConfig extends object = DatabenderConfig> {
     audioCtx?: BaseAudioContext;
 }
 
-export type DatabenderImageSource = ImageData | HTMLImageElement | HTMLVideoElement;
+export type DatabenderImageSource =
+    | ImageData
+    | HTMLImageElement
+    | HTMLVideoElement
+    | HTMLCanvasElement
+    | OffscreenCanvas
+    | ImageBitmap;
 export type DatabenderCanvasContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 export default class Databender<TConfig extends object = DatabenderConfig> {

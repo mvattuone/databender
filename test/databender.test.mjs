@@ -321,6 +321,71 @@ test('reports conversion failures as promise rejections', async (t) => {
     await assert.rejects(conversion, TypeError);
 });
 
+test('converts ImageData without relying on window element constructors', async () => {
+    const databender = new Databender({ audioCtx: createAudioContext() });
+    const imageData = {
+        width: 1,
+        height: 1,
+        data: new Uint8ClampedArray([0, 127, 128, 255])
+    };
+
+    const buffer = await databender.convert(imageData);
+
+    assert.deepEqual(
+        Array.from(buffer.getChannelData(0)),
+        [-1, -1 / 128, 0, 127 / 128]
+    );
+});
+
+test('uses the intrinsic dimensions of drawable image sources', async (t) => {
+    const originalImage = globalThis.HTMLImageElement;
+    const originalOffscreenCanvas = globalThis.OffscreenCanvas;
+    const canvases = [];
+    globalThis.HTMLImageElement = class {
+        constructor() {
+            this.naturalWidth = 3;
+            this.naturalHeight = 2;
+        }
+    };
+    globalThis.OffscreenCanvas = class {
+        constructor(width, height) {
+            this.width = width;
+            this.height = height;
+            canvases.push(this);
+        }
+
+        getContext() {
+            return {
+                drawImage() {},
+                getImageData: () => ({
+                    width: this.width,
+                    height: this.height,
+                    data: new Uint8ClampedArray(this.width * this.height * 4)
+                })
+            };
+        }
+    };
+    t.after(() => {
+        if (typeof originalImage === 'undefined') {
+            delete globalThis.HTMLImageElement;
+        } else {
+            globalThis.HTMLImageElement = originalImage;
+        }
+        if (typeof originalOffscreenCanvas === 'undefined') {
+            delete globalThis.OffscreenCanvas;
+        } else {
+            globalThis.OffscreenCanvas = originalOffscreenCanvas;
+        }
+    });
+
+    const databender = new Databender({ audioCtx: createAudioContext() });
+    await databender.convert(new globalThis.HTMLImageElement());
+
+    assert.equal(canvases.length, 1);
+    assert.equal(canvases[0].width, 3);
+    assert.equal(canvases[0].height, 2);
+});
+
 test('places transformed pixels at the origin before applying a source crop', (t) => {
     const originalImageData = globalThis.ImageData;
     const originalOffscreenCanvas = globalThis.OffscreenCanvas;
@@ -368,16 +433,17 @@ test('places transformed pixels at the origin before applying a source crop', (t
         data: new Uint8ClampedArray(4 * 5 * 4)
     };
     const context = {
+        canvas: { width: 40, height: 50 },
         drawImage(...args) {
             drawCalls.push(args);
         }
     };
     const buffer = new MockAudioBuffer(1, 4 * 5 * 4, 48000);
 
-    databender.draw(buffer, context, 1, 2, 3, 4, 2, 3, 20, 30);
+    databender.draw(buffer, context, 1, 2, 3, 4, 2, 3);
 
     assert.equal(putCalls.length, 1);
     assert.deepEqual(putCalls[0].slice(1), [0, 0]);
     assert.equal(drawCalls.length, 1);
-    assert.deepEqual(drawCalls[0].slice(1), [1, 2, 2, 3, 3, 4, 20, 30]);
+    assert.deepEqual(drawCalls[0].slice(1), [1, 2, 2, 3, 3, 4, 40, 50]);
 });

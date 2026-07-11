@@ -34,6 +34,59 @@ const asArray = (value) => {
 
 const normalizeChainMode = (value) => value === 'parallel' ? 'parallel' : 'series';
 
+const isInstanceOfGlobal = (candidate, constructorName) => {
+    const Constructor = globalThis[constructorName];
+    return typeof Constructor === 'function' && candidate instanceof Constructor;
+};
+
+const isDrawableImage = (candidate) => [
+    'Image',
+    'HTMLImageElement',
+    'HTMLVideoElement',
+    'HTMLCanvasElement',
+    'OffscreenCanvas',
+    'ImageBitmap'
+].some((constructorName) => isInstanceOfGlobal(candidate, constructorName));
+
+const getImageDimensions = (image) => {
+    const width = image.naturalWidth || image.videoWidth || image.width;
+    const height = image.naturalHeight || image.videoHeight || image.height;
+
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+        throw new RangeError('Image sources must have positive dimensions');
+    }
+
+    return { width, height };
+};
+
+const isImageDataLike = (candidate) => {
+    if (!candidate || !candidate.data) {
+        return false;
+    }
+
+    const { width, height, data } = candidate;
+    return Number.isInteger(width)
+        && Number.isInteger(height)
+        && width > 0
+        && height > 0
+        && data.length === width * height * 4;
+};
+
+const createCanvas = (width, height) => {
+    if (typeof OffscreenCanvas !== 'undefined') {
+        return new OffscreenCanvas(width, height);
+    }
+
+    if (typeof document === 'undefined') {
+        throw new Error('A Canvas implementation is required to process image sources');
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+};
+
 export default class Databender {
     constructor({
         config = {},
@@ -56,20 +109,22 @@ export default class Databender {
         const imageDataByBuffer = new WeakMap();
 
         this.convert = async function(image) {
-            if (image instanceof Image || image instanceof HTMLVideoElement) {
-                const canvas = typeof OffscreenCanvas !== 'undefined'
-                    ? new OffscreenCanvas(window.innerWidth, window.innerHeight)
-                    : (() => {
-                        const element = document.createElement('canvas');
-                        element.width = window.innerWidth;
-                        element.height = window.innerHeight;
-                        return element;
-                    })();
-                var context = canvas.getContext('2d');
+            var imageData = image;
+            if (isDrawableImage(image)) {
+                const { width, height } = getImageDimensions(image);
+                const canvas = createCanvas(width, height);
+                const context = canvas.getContext('2d');
+                if (!context) {
+                    throw new Error('Unable to create a 2D canvas context');
+                }
                 context.drawImage(image, 0, 0, canvas.width, canvas.height);
-                var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                imageData = context.getImageData(0, 0, canvas.width, canvas.height);
             }
-            this.imageData = imageData || image;
+            if (!isImageDataLike(imageData)) {
+                throw new TypeError('Expected ImageData or a supported canvas image source');
+            }
+
+            this.imageData = imageData;
             var bufferSize = this.imageData.data.length / this.channels;
 
             // Make an audioBuffer on the audioContext to pass to the offlineAudioCtx AudioBufferSourceNode
@@ -240,10 +295,16 @@ export default class Databender {
             }
         };
 
-        this.draw = function(buffer, context, sourceX = 0, sourceY = 0, x = 0, y = 0, sourceWidth, sourceHeight, targetWidth = window.innerWidth, targetHeight = window.innerHeight) {
+        this.draw = function(buffer, context, sourceX = 0, sourceY = 0, x = 0, y = 0, sourceWidth, sourceHeight, targetWidth, targetHeight) {
             const imageData = imageDataByBuffer.get(buffer) || this.imageData;
             const resolvedSourceWidth = sourceWidth ?? imageData.width;
             const resolvedSourceHeight = sourceHeight ?? imageData.height;
+            const resolvedTargetWidth = targetWidth
+                ?? context.canvas?.width
+                ?? (typeof window !== 'undefined' ? window.innerWidth : imageData.width);
+            const resolvedTargetHeight = targetHeight
+                ?? context.canvas?.height
+                ?? (typeof window !== 'undefined' ? window.innerHeight : imageData.height);
 
             // Get buffer data
             var bufferData = buffer.getChannelData(0);
@@ -262,19 +323,12 @@ export default class Databender {
             const transformedImageData = new ImageData(imageData.width, imageData.height);
             transformedImageData.data.set(clampedDataArray);
 
-            const tmpCanvas = typeof OffscreenCanvas !== 'undefined'
-                ? new OffscreenCanvas(imageData.width, imageData.height)
-                : (() => {
-                    const element = document.createElement('canvas');
-                    element.width = imageData.width;
-                    element.height = imageData.height;
-                    return element;
-                })();
+            const tmpCanvas = createCanvas(imageData.width, imageData.height);
             tmpCanvas.getContext('2d').putImageData(transformedImageData, 0, 0);
-            context.drawImage(tmpCanvas, sourceX, sourceY, resolvedSourceWidth, resolvedSourceHeight, x, y, targetWidth, targetHeight);
+            context.drawImage(tmpCanvas, sourceX, sourceY, resolvedSourceWidth, resolvedSourceHeight, x, y, resolvedTargetWidth, resolvedTargetHeight);
         };
 
-        this.bend = function(data, context, sourceX = 0, sourceY = 0, x = 0, y = 0, targetWidth = window.innerWidth, targetHeight = window.innerHeight) {
+        this.bend = function(data, context, sourceX = 0, sourceY = 0, x = 0, y = 0, targetWidth, targetHeight) {
             return this.convert(data)
                 .then((buffer) => {
                     const imageData = imageDataByBuffer.get(buffer) || this.imageData;
