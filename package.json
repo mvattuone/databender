@@ -26,6 +26,14 @@
   ],
   "author": "Mike Vattuone",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mvattuone/databender.git"
+  },
+  "homepage": "https://github.com/mvattuone/databender#readme",
+  "bugs": {
+    "url": "https://github.com/mvattuone/databender/issues"
+  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "28.0.8",
     "@rollup/plugin-node-resolve": "16.0.3",
