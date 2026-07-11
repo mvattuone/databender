@@ -3,13 +3,19 @@
   "version": "2.0.0-alpha.3",
   "description": "Create interesting visuals by misusing the Web Audio API",
   "main": "index.js",
+  "types": "index.d.ts",
   "type": "module",
   "exports": {
-    ".": "./index.js",
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "default": "./index.js"
+    },
     "./dist/databender.js": "./dist/databender.js"
   },
   "files": [
     "index.js",
+    "index.d.ts",
     "dist"
   ],
   "scripts": {
