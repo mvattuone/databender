@@ -94,6 +94,20 @@ test('tracks immutable config updates, including missing and falsy keys', async 
     assert.equal(databender.configHasChanged(), true);
 });
 
+test('tracks config changes without serializing config values', () => {
+    const cyclicConfig = { amount: 1n };
+    cyclicConfig.self = cyclicConfig;
+    const databender = new Databender({
+        audioCtx: createAudioContext(),
+        config: cyclicConfig
+    });
+
+    assert.equal(databender.configHasChanged(), false);
+
+    databender.updateConfig('callback', undefined, () => {});
+    assert.equal(databender.configHasChanged(), true);
+});
+
 test('captures one config snapshot for an entire render', async (t) => {
     const offline = installOfflineAudioContext();
     t.after(offline.restore);

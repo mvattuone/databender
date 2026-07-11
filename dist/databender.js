@@ -144,10 +144,7 @@ var Databender = (function () {
             };
 
             this.configHasChanged = function() {
-                if (!this.configKeys.length) {
-                    return false;
-                }
-                return JSON.stringify(this.previousConfig) !== JSON.stringify(this.config);
+                return this.previousConfig !== this.config;
             };
 
             this.updateConfig = function(effect, param, value) {
