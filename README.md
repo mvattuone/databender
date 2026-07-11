@@ -16,50 +16,45 @@ The quickest way to get _something_ on the page:
 <img
   crossorigin="anonymous"
   style="display:none"
-  src="http://picsum.photos/800"
+  src="https://picsum.photos/800"
 />
 <canvas height="1280" width="1280"></canvas>
 
 <script src="node_modules/databender/dist/databender.js"></script>
 <script>
-  const loadDatabender = () => {
-    const img = document.querySelector("img");
-    const canvas = document.querySelector("canvas");
-    const context = canvas.getContext("2d");
-    const config = {
-      bitcrusher: {
-        active: true,
-        bits: 4,
-        normfreq: 0.004,
-        bufferSize: 2048
-      },
-      biquad: {
-        active: true,
-        detune: 20,
-        randomize: true,
-        quality: 2.1,
-        randomValues: 10,
-        type: "highpass",
-        biquadFrequency: 200
-      },
-      detune: {
-        active: true,
-        value: 0.0
-      }
-    };
-    const databender = new Databender({ config });
-    databender.bend(img, context);
-  };
+  const img = document.querySelector("img");
+  const canvas = document.querySelector("canvas");
+  const context = canvas.getContext("2d");
+  let databender;
 
-  window.onload = () => {
-    document.addEventListener("click", () => {
-      loadDatabender();
+  window.addEventListener("load", () => {
+    document.addEventListener("click", async () => {
+      // Construct once, in response to a user gesture, and reuse it.
+      databender ??= new Databender({
+        effectsChain: [({ context }) => {
+          const filter = context.createBiquadFilter();
+          filter.type = "highpass";
+          filter.frequency.value = 400;
+          return filter;
+        }]
+      });
+
+      await databender.bend(
+        img,
+        context,
+        0,
+        0,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
     });
-  };
+  });
 </script>
 ```
 
-- Start up a server (e.g. `python -m SimpleHTTPServer`)
+- Start up a server (e.g. `python3 -m http.server`)
 - Behold!
 
 Using an ES module aware bundler? You can import straight from npm:
