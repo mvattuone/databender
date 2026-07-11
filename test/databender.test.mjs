@@ -296,6 +296,31 @@ test('keeps image dimensions local to concurrent bend operations', async (t) => 
     ]);
 });
 
+test('reports conversion failures as promise rejections', async (t) => {
+    const originalImage = globalThis.Image;
+    const originalVideo = globalThis.HTMLVideoElement;
+    globalThis.Image = class {};
+    globalThis.HTMLVideoElement = class {};
+    t.after(() => {
+        if (typeof originalImage === 'undefined') {
+            delete globalThis.Image;
+        } else {
+            globalThis.Image = originalImage;
+        }
+        if (typeof originalVideo === 'undefined') {
+            delete globalThis.HTMLVideoElement;
+        } else {
+            globalThis.HTMLVideoElement = originalVideo;
+        }
+    });
+
+    const databender = new Databender({ audioCtx: createAudioContext() });
+    const conversion = databender.convert({ width: 1, height: 1 });
+
+    assert.equal(typeof conversion.then, 'function');
+    await assert.rejects(conversion, TypeError);
+});
+
 test('places transformed pixels at the origin before applying a source crop', (t) => {
     const originalImageData = globalThis.ImageData;
     const originalOffscreenCanvas = globalThis.OffscreenCanvas;

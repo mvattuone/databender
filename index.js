@@ -55,7 +55,7 @@ export default class Databender {
         this.renderQueue = [];
         const imageDataByBuffer = new WeakMap();
 
-        this.convert = function(image) {
+        this.convert = async function(image) {
             if (image instanceof Image || image instanceof HTMLVideoElement) {
                 const canvas = typeof OffscreenCanvas !== 'undefined'
                     ? new OffscreenCanvas(window.innerWidth, window.innerHeight)
@@ -83,7 +83,7 @@ export default class Databender {
             }
 
             imageDataByBuffer.set(audioBuffer, this.imageData);
-            return Promise.resolve(audioBuffer);
+            return audioBuffer;
         };
 
         this.configHasChanged = function() {
